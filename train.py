@@ -15,13 +15,16 @@ from utils import save_model, plot_results, train_iter, test_model, get_optimize
 
 
 
+
+
 def main(args):
     print('Training...')
 
     args.path = os.path.join('experiments', args.path)
     if os.path.exists(args.path):
-        print(f'Deleating the existing folder {args.path}')
-        shutil.rmtree(args.path)
+        print(f'Deleting the existing folder {args.path} (ignoring errors)')
+        shutil.rmtree(args.path, ignore_errors=True)
+
     os.makedirs(args.path, exist_ok=True)
     print(f'Experiments will be saved in {args.path}')
 
@@ -71,6 +74,8 @@ def main(args):
     pbar = tqdm.trange(args.epochs)
 
     # Loop through the specified number of epochs
+    best_loss = float('inf')
+    best_model_state = None
     for epoch in pbar:
         # Create a progress bar for the batches in the training loop, set leave=False to avoid cluttering output
         pbar_batch = tqdm.tqdm(train_loader, leave=False)
@@ -101,10 +106,14 @@ def main(args):
         # Plot the results
         plot_results(losses_train, losses_test, acc_train, acc_test, args)
 
-        # To do 6
-        save_model(model, args)
-        visualize_results(x_test, y_test, model, device, args)
+ # Check if this is the best model so far
+        if loss < best_loss:
+            best_loss = loss
+            best_model_state = model.state_dict()  # Save weights in memory
+            save_model(model, args)                                # Overwrite model.pth
 
+    model.load_state_dict(best_model_state)
+    visualize_results(x_test, y_test, model, device, args) # Only visualize for best model
     # Save the final results 
     with open(os.path.join(args.path, 'results.txt'), 'a') as f:
         f.write(f'Clean:\n')
